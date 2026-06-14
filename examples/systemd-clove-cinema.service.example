@@ -29,12 +29,13 @@ After=network.target
 Type=simple
 User=REPLACE_WITH_USERNAME
 WorkingDirectory=REPLACE_WITH_FULL_PATH/clove-cinema
-ExecStart=/usr/bin/python3 REPLACE_WITH_FULL_PATH/clove-cinema/server.py --port 8770 --root REPLACE_WITH_VIDEOS_PATH
+# 用项目 venv 里的 Python, 不要 /usr/bin/python3 (依赖会装不上 / 系统 Python 没 aiohttp)
+ExecStart=REPLACE_WITH_FULL_PATH/clove-cinema/.venv/bin/python REPLACE_WITH_FULL_PATH/clove-cinema/server.py --port 8770 --root REPLACE_WITH_VIDEOS_PATH
 Restart=on-failure
 RestartSec=3
 
-# 想直接对外暴露（不走 nginx）就加 --bind 0.0.0.0：
-# ExecStart=/usr/bin/python3 .../server.py --port 8770 --bind 0.0.0.0 --root /data/films
+# 想直接对外暴露（不走 nginx）就加 --bind 0.0.0.0；但服务本身没有鉴权, 公网裸跑请放在反代/防火墙后：
+# ExecStart=REPLACE_WITH_FULL_PATH/clove-cinema/.venv/bin/python REPLACE_WITH_FULL_PATH/clove-cinema/server.py --port 8770 --bind 0.0.0.0 --root /data/films
 
 [Install]
 WantedBy=multi-user.target

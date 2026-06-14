@@ -19,7 +19,8 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
+        <!-- 用项目 venv 里的 Python, 不要 /usr/bin/python3 (系统 Python 没装 aiohttp) -->
+        <string>REPLACE_WITH_FULL_PATH/clove-cinema/.venv/bin/python</string>
         <string>REPLACE_WITH_FULL_PATH/clove-cinema/server.py</string>
         <string>--port</string>
         <string>8770</string>

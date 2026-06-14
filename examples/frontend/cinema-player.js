@@ -42,7 +42,8 @@ function ensureDom() {
       <button class="cc-btn cc-min" title="最小化">—</button>
       <button class="cc-btn cc-close" title="关闭">×</button>
     </div>
-    <video id="clove-cinema-video" playsinline controls preload="metadata"></video>
+    <!-- crossorigin: 让 canvas.drawImage(videoEl) 能取像素做截图; 后端跨域时需配合 --allow-origin -->
+    <video id="clove-cinema-video" playsinline controls preload="metadata" crossorigin="anonymous"></video>
     <div class="cc-resize" title="拖拽改变大小"></div>
   `;
   document.body.appendChild(wrap);

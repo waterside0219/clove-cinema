@@ -19,13 +19,19 @@
 
 ## 装
 
+先确认有 Python 3.9 或更高。然后：
+
 ```bash
 git clone https://github.com/waterside0219/clove-cinema.git
 cd clove-cinema
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
 ```
 
-依赖就一个 `aiohttp>=3.9`。Python 3.9+。
+依赖就一个 `aiohttp>=3.9`。
+
+> 上面的 venv 步骤不是装饰——后面 `examples/` 里的 systemd / launchd 模板默认指向 `.venv/bin/python`，跳过这一步系统服务会找不到 aiohttp 起不来。
 
 ## 起
 
@@ -42,15 +48,21 @@ python server.py
 python server.py --port 8800 --root /data/films --bind 0.0.0.0
 ```
 
-环境变量等价：
+环境变量等价（一次性 export，或直接 inline 在启动命令前面）：
 
 ```bash
-CLOVE_CINEMA_PORT=8800
-CLOVE_CINEMA_BIND=0.0.0.0
-CLOVE_CINEMA_ROOT=/data/films
-CLOVE_CINEMA_PREFIX=/cinema           # 路由前缀，默认 /cinema
-CLOVE_CINEMA_ALLOW_ORIGIN=https://your.site  # 跨域时设；同源不用
+export CLOVE_CINEMA_PORT=8800
+export CLOVE_CINEMA_BIND=0.0.0.0
+export CLOVE_CINEMA_ROOT=/data/films
+export CLOVE_CINEMA_PREFIX=/cinema           # 路由前缀，默认 /cinema
+export CLOVE_CINEMA_ALLOW_ORIGIN=https://your.site  # 跨域时设；同源不用
+python server.py
+
+# 或者 inline：
+CLOVE_CINEMA_PORT=8800 CLOVE_CINEMA_ROOT=/data/films python server.py
 ```
+
+> 服务本身没有鉴权——`--bind 0.0.0.0` 直接公网裸跑请放在 nginx / Caddy / 防火墙后，别让陌生人直接 ls 你的片库。
 
 部署模板见 `examples/`：
 - `launchd.com.clove-cinema.plist.example` — Mac mini
@@ -77,15 +89,15 @@ CLOVE_CINEMA_ALLOW_ORIGIN=https://your.site  # 跨域时设；同源不用
 
 | 路由 | 用途 | 返回 |
 |---|---|---|
-| `GET  /cinema/list` | 列片库 | `{films: [{id, title, video_size, has_subtitle, subtitle_count, duration, ...}]}` |
-| `GET  /cinema/{id}/meta` | 单片元数据 | 同上单条 |
-| `GET  /cinema/sync/{id}?from=&to=` | 拿 `[from, to]` 区间相交的字幕 | `{subtitles: [{start, end, text}]}` |
+| `GET  /cinema/list` | 列片库 | `{films: [{id, title, video_file, video_mime, video_size, has_subtitle, subtitle_count, duration}]}` |
+| `GET  /cinema/{id}/meta` | 单片元数据 | 同上单条（不带外层 `films` 包装） |
+| `GET  /cinema/sync/{id}?from=&to=` | 拿 `[from, to]` 区间相交的字幕 | `{id, from, to, subtitles: [{start, end, text}]}` |
 | `GET  /cinema/stream/{id}` | 视频流（认真支持 Range） | 206 / 200 / 416 |
 | `HEAD /cinema/stream/{id}` | 拿总长 | 头里 `Content-Length` + `Accept-Ranges: bytes` |
 
 `{id}` 是文件夹名（URL 编码）。`from` / `to` 是秒（浮点）。
 
-`duration` 字段用字幕末尾 timestamp 算的，**不是视频真实长度**。装饰用 —— 浏览器播放器进度条会自己读真实长度。如果字幕不全，这里会偏小，不影响播放。
+`duration` 字段用字幕末尾 timestamp 算的，**不是视频真实长度**。装饰用 —— 浏览器播放器进度条会自己读真实长度。如果字幕不全，这里会偏小；**没字幕时为 `0`**，但不影响播放。
 
 ### CORS
 
@@ -99,6 +111,14 @@ python server.py --allow-origin https://your.site
 ```
 
 服务会在所有响应里发 `Access-Control-Allow-Origin`，并响应 OPTIONS preflight。
+
+**跨域 + 想用 canvas 截当前帧（`snapshot()`）必须三步齐**：
+
+1. 后端：起服务时带 `--allow-origin https://your.site`（参考实现不带 cookies / 凭据，所以这里也可以写 `--allow-origin '*'`）
+2. 前端 `<video>` 标签加 `crossorigin="anonymous"`，否则 `canvas.drawImage(videoEl)` 之后 `toDataURL()` 会抛 `SecurityError: tainted canvas`
+3. 后端 `/cinema/stream/{id}` 必须发 `Access-Control-Allow-Origin`（服务已经在做了，#1 设了就有）
+
+`examples/frontend/cinema-player.js` 里那条 `<video>` 已经带了 `crossorigin="anonymous"`。
 
 ## 前端怎么集成
 
@@ -120,7 +140,7 @@ python server.py --allow-origin https://your.site
 
 ```python
 from aiohttp import web
-from server import setup_routes  # 或 from clove_cinema_server import setup_routes
+from server import setup_routes
 from pathlib import Path
 
 app = web.Application()
@@ -128,6 +148,16 @@ app = web.Application()
 setup_routes(app, root=Path.home() / "cinema", prefix="/cinema")
 web.run_app(app)
 ```
+
+## 边界说明
+
+这个服务是给"自家看 + 给自家 AI 看"用的，下面几条不是 bug，是设计约束 —— 用之前心里有数：
+
+- **`--root` 必须是你自己可信的本地目录**：服务跟随 symlink 解析文件，别让陌生人或不可信进程往这里写文件 / 软链 / 子目录。
+- **没有鉴权**：跨机器、出家网、上公网都请放在反代 / VPN / 防火墙后面。`--bind 0.0.0.0` 不是给你直接面公网的。
+- **没有缓存，串行 parse**：`/list`、`/sync` 每次都重新解析字幕。个人片库（几十部以内）完全感觉不到；上百部 + 高并发会重复 parse 浪费 CPU。
+- **超大字幕会拖慢**：正常字幕几十~几百 KB 没问题；几 MB 起的异常字幕会吃内存、拖响应。建议先 `iconv` / 编辑器清一下。
+- **`duration` 不是视频真实长度**：用字幕最后一条时间戳算的，装饰用。无字幕时为 `0`。播放器自己读真实长度。
 
 ## 常见坑
 

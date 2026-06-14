@@ -12,7 +12,7 @@ CLOVE_CINEMA_ROOT/<片名>/ 下就出现在片库，没有"导入"这一步。
   CLOVE_CINEMA_ROOT=/data/films python server.py
 
 嵌入到已有 aiohttp 应用:
-  from clove_cinema_server import setup_routes
+  from server import setup_routes
   setup_routes(app, root=Path("/data/films"))
 """
 
@@ -219,19 +219,36 @@ def _looks_chinese_subtitle(path: Path) -> bool:
     return bool(re.search(r"[\u4e00-\u9fff]", sample))
 
 
+_ZH_TAG_TOKENS = {
+    "zh", "zho", "chi", "chs", "cht", "cn", "sc", "tc",
+    "zhcn", "zhtw", "zhhans", "zhhant", "chinese",
+}
+_EN_TAG_TOKENS = {"en", "eng", "english"}
+
+
 def _subtitle_rank(path: Path):
-    name = path.name.lower()
-    zh_name = any(token in name for token in (
-        "zh", "zho", "chi", "chs", "cht", "cn", "sc", "tc", "chinese", "简", "繁", "中"
-    ))
-    english_name = any(token in name for token in (".en.", "-en.", "_en.", "english"))
-    generic_name = name in ("sub.srt", "movie.srt")
+    """字幕优先级排序。逐项规则（小者优先）：
+    1. 内容里有汉字 → 中文片 (兜底, 最准但要读文件);
+    2. 文件名带中文语言标签 (按 . _ - 分隔的 token 精确匹配, 不会被 'music.srt' 里的 'sc' 误中);
+    3. 是否通用名 sub/movie;
+    4. 是否英文标签 (劣势项, 同等条件下英文排后面);
+    5. 名字字母序兜底.
+    """
+    name_lower = path.name.lower()
+    stem_lower = path.stem.lower()
+    # 按非字母数字分隔成 token, 避免 substring 误匹配
+    tokens = set(filter(None, re.split(r"[^a-z0-9]+", stem_lower)))
+    zh_by_token = bool(tokens & _ZH_TAG_TOKENS)
+    zh_by_cjk = any(ch in path.name for ch in "简繁中")
+    zh_name = zh_by_token or zh_by_cjk
+    english_name = bool(tokens & _EN_TAG_TOKENS)
+    generic_name = stem_lower in ("sub", "movie")
     return (
         0 if _looks_chinese_subtitle(path) else 1,
         0 if zh_name else 1,
         0 if generic_name else 1,
         1 if english_name else 0,
-        name,
+        name_lower,
     )
 
 

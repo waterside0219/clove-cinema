@@ -15,6 +15,10 @@
 
 下文假设这些路由都从前端能直接 fetch，不管你是同源还是反代。
 
+> **跨域 + 想用 `snapshot()`**：除了后端 `--allow-origin`，前端 `<video>` 必须带
+> `crossorigin="anonymous"`，否则 `canvas.drawImage(video)` → `toDataURL()` 会抛
+> `SecurityError: tainted canvas`。`cinema-player.js` 已经默认加上了。
+
 ---
 
 ## 1. 挂浮窗（一次性）
