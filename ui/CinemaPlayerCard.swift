@@ -6,9 +6,14 @@
 //   GET /cinema/sync/{id}?from=&to=   -> subtitles in a time range (for danmu / context)
 //   GET /cinema/stream/{id}           -> Range-served video
 //
-// Drop this file into any SwiftUI app (iOS 16+ / macOS 13+), set `baseURL`, supply
+// Drop this file into any SwiftUI iOS app (iOS 16+), set `baseURL`, supply
 // an `onSendMoment` closure that posts to your own chat backend, done.
-// No external dependencies beyond SwiftUI + AVKit.
+// No external dependencies beyond SwiftUI + AVKit + UIKit.
+//
+// macOS not supported out of the box — it uses UIKit-backed types
+// (UIViewRepresentable, UIView, UIFont, UIImage, statusBarHidden,
+// navigationBarTitleDisplayMode). Add `#if os(iOS)` and AppKit equivalents
+// if you need Mac Catalyst-free macOS.
 //
 // What the player gives you:
 //   - Film list with cover-less rows (title + duration + subtitle count)

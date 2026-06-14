@@ -126,7 +126,7 @@ python server.py --allow-origin https://your.site
 
 ### iOS / SwiftUI — `ui/CinemaPlayerCard.swift`
 
-单文件 ~730 行 drop-in，依赖只有 SwiftUI + AVKit，**iOS 16+ / macOS 13+**。把文件拖进你 Xcode 项目，三步用：
+单文件 ~730 行 drop-in，依赖 SwiftUI + AVKit + UIKit，**iOS 16+**（macOS 需要把 UIKit-backed 部分换成 AppKit 等价物，文件顶部有说明）。把文件拖进你 Xcode 项目，三步用：
 
 ```swift
 let client = CinemaClient(baseURL: URL(string: "http://192.168.x.x:8770")!)
@@ -177,8 +177,8 @@ web.run_app(app)
 这个服务是给"自家看 + 给自家 AI 看"用的，下面几条不是 bug，是设计约束 —— 用之前心里有数：
 
 - **`--root` 必须是你自己可信的本地目录**：服务跟随 symlink 解析文件，别让陌生人或不可信进程往这里写文件 / 软链 / 子目录。
-- **没有鉴权**：跨机器、出家网、上公网都请放在反代 / VPN / 防火墙后面。`--bind 0.0.0.0` 不是给你直接面公网的。
-- **没有缓存，串行 parse**：`/list`、`/sync` 每次都重新解析字幕。个人片库（几十部以内）完全感觉不到；上百部 + 高并发会重复 parse 浪费 CPU。
+- **没有鉴权**：跨机器、出家庭网络、上公网都请放在反代 / VPN / 防火墙后面。`--bind 0.0.0.0` 不是给你直接面公网的。
+- **没有字幕缓存**：`/list`、`/sync` 每次同步都重新读取并解析字幕文件。个人片库（几十部以内）完全感觉不到；上百部 + 高并发会重复 parse 浪费 CPU。
 - **超大字幕会拖慢**：正常字幕几十~几百 KB 没问题；几 MB 起的异常字幕会吃内存、拖响应。建议先 `iconv` / 编辑器清一下。
 - **`duration` 不是视频真实长度**：用字幕最后一条时间戳算的，装饰用。无字幕时为 `0`。播放器自己读真实长度。
 
