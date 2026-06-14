@@ -211,6 +211,38 @@ def _first_match(d: Path, exts):
     return None
 
 
+def _looks_chinese_subtitle(path: Path) -> bool:
+    try:
+        sample = _read_sub_text(path)[:65536]
+    except OSError:
+        return False
+    return bool(re.search(r"[\u4e00-\u9fff]", sample))
+
+
+def _subtitle_rank(path: Path):
+    name = path.name.lower()
+    zh_name = any(token in name for token in (
+        "zh", "zho", "chi", "chs", "cht", "cn", "sc", "tc", "chinese", "简", "繁", "中"
+    ))
+    english_name = any(token in name for token in (".en.", "-en.", "_en.", "english"))
+    generic_name = name in ("sub.srt", "movie.srt")
+    return (
+        0 if _looks_chinese_subtitle(path) else 1,
+        0 if zh_name else 1,
+        0 if generic_name else 1,
+        1 if english_name else 0,
+        name,
+    )
+
+
+def _first_subtitle(d: Path):
+    subtitles = sorted(
+        (p for p in d.iterdir() if p.is_file() and p.suffix.lower() in SUB_EXTS),
+        key=_subtitle_rank,
+    )
+    return subtitles[0] if subtitles else None
+
+
 def _resolve(root: Path, cid: str):
     """(dir, video_path|None, srt_path|None) 或 None。"""
     if not _safe_id(cid):
@@ -218,14 +250,14 @@ def _resolve(root: Path, cid: str):
     d = root / cid
     if not d.is_dir():
         return None
-    return d, _first_match(d, VIDEO_EXTS), _first_match(d, SUB_EXTS)
+    return d, _first_match(d, VIDEO_EXTS), _first_subtitle(d)
 
 
 def _film_info(d: Path):
     video = _first_match(d, VIDEO_EXTS)
     if not video:
         return None
-    srt = _first_match(d, SUB_EXTS)
+    srt = _first_subtitle(d)
     cues = parse_subtitles(srt) if srt else []
     return {
         "id": d.name,
