@@ -20,7 +20,7 @@
 ## 装
 
 ```bash
-git clone <this-repo> clove-cinema
+git clone https://github.com/waterside0219/clove-cinema.git
 cd clove-cinema
 pip install -r requirements.txt
 ```
@@ -64,7 +64,7 @@ CLOVE_CINEMA_ALLOW_ORIGIN=https://your.site  # 跨域时设；同源不用
 ~/cinema/
 ├── 源代码（2011）/
 │   ├── source-code.mp4         # 任意文件名，取扫到的第一个视频
-│   └── source-code.zh.ass      # 任意文件名，取第一个字幕（.srt/.vtt/.ass/.ssa，可无）
+│   └── source-code.zh.ass      # 字幕（.srt/.vtt/.ass/.ssa，可无）。多份字幕时，优先按内容是中文选；其次按文件名含 zh/cn/chinese/简/繁/中 等中文标识选；都不匹配再退回第一个
 └── Hereditary (2018)/
     ├── hereditary.mp4
     └── hereditary.srt
