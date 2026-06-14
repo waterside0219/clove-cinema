@@ -122,7 +122,30 @@ python server.py --allow-origin https://your.site
 
 ## 前端怎么集成
 
-参考实现在 `examples/frontend/`：
+两套参考实现，看你自己端在哪：
+
+### iOS / SwiftUI — `ui/CinemaPlayerCard.swift`
+
+单文件 ~730 行 drop-in，依赖只有 SwiftUI + AVKit，**iOS 16+ / macOS 13+**。把文件拖进你 Xcode 项目，三步用：
+
+```swift
+let client = CinemaClient(baseURL: URL(string: "http://192.168.x.x:8770")!)
+CinemaLibraryView(client: client, messages: yourChatHistory) { snapshot in
+    // snapshot.frameJPEG / snapshot.nearbyCues / snapshot.messageText
+    // 自己发到自家 chat 后端
+}
+```
+
+带：
+- 内嵌播放器 + 横屏全屏切换
+- 弹幕层（user 粉 / assistant 绿松石 + 白描边，4 lane 不重播）
+- 字幕窗口拉自 `/cinema/sync`，本地缓存
+- 续播位置自动存 UserDefaults，再次进入自动跳回，看完会清掉存档
+- 发送时自动截当前帧 + 拼最近字幕 → 一个 `CinemaSnapshot` 交给你
+
+链路里"chat 怎么发"完全留给你 — 这文件不知道你的鉴权、上传协议、消息存储是什么样。
+
+### Web / Vanilla JS — `examples/frontend/`
 
 - `cinema-player.js` — 浮窗播放器（拖拽 / 缩放 / 最小化 / 持久化位置 / `snapshot()` API）
 - `cinema-player.css` — 样式
